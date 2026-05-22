@@ -1,0 +1,40 @@
+-- HUDConfig
+-- Shared config for survival HUD.
+
+local HUDConfig = {
+	-- Bar layout
+	BAR_WIDTH = 125,
+	BAR_HEIGHT = 10,
+	BAR_GAP = 8,
+
+	LABEL_WIDTH = 60,
+	LABEL_TEXT_SIZE = 12,
+
+	-- Movement
+	WALK_SPEED = 50,
+	RUN_SPEED = 100,
+	SLOW_SPEED = 8,
+
+	-- Stamina
+	STAMINA_MAX = 1000000,
+	DRAIN_PER_SEC = 18,
+	REGEN_PER_SEC = 14,
+	REGEN_DELAY = 0.8,
+	MIN_STAMINA_TO_START = 10,
+
+	-- Card layout
+	CARD_WIDTH = 220,
+	CARD_HEIGHT = 90,
+	CARD_RADIUS = 12,
+	CARD_SIDE_PAD = 20,
+	CARD_BOTTOM_PAD = 24,
+
+	-- Damage vignette
+	DAMAGE_FLASH_IN = 0.08,
+	DAMAGE_FLASH_OUT = 0.35,
+	DAMAGE_BASE_PEAK = 0.35,
+	DAMAGE_EXTRA_PEAK = 0.15,
+	DAMAGE_MAX_COOLDOWN = 0.05,
+}
+
+return HUDConfig

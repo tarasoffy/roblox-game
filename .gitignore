@@ -1,0 +1,12 @@
+# Roblox binary files / backups
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
