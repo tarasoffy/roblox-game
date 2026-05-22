@@ -35,6 +35,7 @@ local bulletFX = combatRemotes.BulletFX
 -------------------------------------------------
 local bulletIdCounter = 0
 local RNG = Random.new()
+local bowChargeStartedAt: {[Player]: number} = {}
 
 local function nextProjectileId(): number
 	bulletIdCounter += 1
@@ -46,13 +47,26 @@ weaponAction.OnServerEvent:Connect(function(player: Player, action: string, data
 	local char = CombatHelpers.GetCharacter(player)
 	if not char then return end
 
+	if action == "ChargeCancel" then
+		bowChargeStartedAt[player] = nil
+		return
+	end
+
 	local tool = CombatHelpers.GetEquippedTool(char)
 	if not tool then return end
+
+	if action == "ChargeStart" then
+		if tool.Name == "Bow" then
+			bowChargeStartedAt[player] = os.clock()
+		end
+
+		return
+	end
 
 	if action == "Shoot" then
 		local cfg = CONFIG[tool.Name]
 
-		RangedWeapon.Handle(player, tool, data, cfg, {
+		local shotHandled = RangedWeapon.Handle(player, tool, data, cfg, {
 			weaponAction = weaponAction,
 			bulletFX = bulletFX,
 
@@ -67,7 +81,12 @@ weaponAction.OnServerEvent:Connect(function(player: Player, action: string, data
 
 			NextProjectileId = nextProjectileId,
 			RNG = RNG,
+			BowChargeStartedAt = bowChargeStartedAt[player],
 		})
+
+		if tool.Name == "Bow" and shotHandled then
+			bowChargeStartedAt[player] = nil
+		end
 
 		return
 	end
@@ -87,4 +106,5 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	CombatCooldowns.ClearPlayer(player)
+	bowChargeStartedAt[player] = nil
 end)

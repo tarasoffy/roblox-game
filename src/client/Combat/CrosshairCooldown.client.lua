@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
+local Workspace = game:GetService("Workspace")
 
 local Config = require(script.Parent:WaitForChild("CooldownDialConfig"))
 local DialView = require(script.Parent:WaitForChild("CooldownDialView"))
@@ -57,7 +58,28 @@ local function hideDial()
 	UserInputService.MouseIconEnabled = true
 end
 
-local function startCooldown(seconds: number)
+local function getAimPosition(): Vector3?
+	local camera = Workspace.CurrentCamera
+	if not camera then return nil end
+
+	local mousePosition = UserInputService:GetMouseLocation()
+	local ray = camera:ViewportPointToRay(mousePosition.X, mousePosition.Y)
+	local char = player.Character
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = char and { char } or {}
+
+	local result = Workspace:Raycast(ray.Origin, ray.Direction * 1000, params)
+	return result and result.Position or ray.Origin + ray.Direction * 1000
+end
+
+local function getChargePower(): number
+	if chargeDuration <= 0 then return 0 end
+	return math.clamp((os.clock() - chargeStartT) / chargeDuration, 0, 1)
+end
+
+local function startCooldown(seconds: number, initialFill: number?)
 	if seconds <= 0 then return end
 
 	local toolName = getEquippedToolName()
@@ -81,13 +103,21 @@ local function startCooldown(seconds: number)
 	chargeReady = false
 	readyPulseStartT = nil
 
+	local startingFill = if initialFill == nil then 1 else math.clamp(initialFill, 0, 1)
+
 	cooldowns[key] = {
 		startT = os.clock(),
 		duration = seconds,
+		startingFill = startingFill,
+		useVisibleFill = initialFill ~= nil,
 	}
 
 	showDial()
-	DialView.setAllOn()
+	if initialFill == nil then
+		DialView.setCooldownProgress(0)
+	else
+		DialView.setCooldownVisibleFill(startingFill)
+	end
 end
 
 local function startBowCharge()
@@ -102,11 +132,12 @@ local function startBowCharge()
 	chargeReady = false
 	readyPulseStartT = nil
 
+	weaponAction:FireServer("ChargeStart")
 	showDial()
 	DialView.setChargeInitial()
 end
 
-local function stopBowCharge()
+local function stopBowCharge(cancelServerCharge: boolean?)
 	if activeMode ~= "charge" then return end
 
 	active = false
@@ -114,7 +145,30 @@ local function stopBowCharge()
 	chargeReady = false
 	readyPulseStartT = nil
 
+	if cancelServerCharge ~= false then
+		weaponAction:FireServer("ChargeCancel")
+	end
+
 	hideDial()
+end
+
+local function releaseBowCharge()
+	if activeMode ~= "charge" then return end
+
+	local chargePower = getChargePower()
+	local aimPos = getAimPosition()
+
+	if chargePower < Config.BOW_MIN_CHARGE_TO_SHOOT or not aimPos then
+		stopBowCharge()
+		return
+	end
+
+	stopBowCharge(false)
+
+	weaponAction:FireServer("Shoot", {
+		aimPos = aimPos,
+		chargePower = chargePower,
+	})
 end
 
 local function stopCooldown()
@@ -134,12 +188,17 @@ RunService.RenderStepped:Connect(function()
 	DialView.setPosition(mousePosition)
 
 	if activeMode == "charge" then
-		if getEquippedToolName() ~= "Bow" or not UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+		if getEquippedToolName() ~= "Bow" then
 			stopBowCharge()
 			return
 		end
 
-		local progress = math.clamp((os.clock() - chargeStartT) / chargeDuration, 0, 1)
+		if not UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+			releaseBowCharge()
+			return
+		end
+
+		local progress = getChargePower()
 		DialView.setChargeProgress(progress)
 
 		if progress >= 1 and not chargeReady then
@@ -176,18 +235,25 @@ RunService.RenderStepped:Connect(function()
 		return
 	end
 
-	local progress = math.clamp((os.clock() - cooldown.startT) / cooldown.duration, 0, 1)
+	local elapsedProgress = math.clamp((os.clock() - cooldown.startT) / cooldown.duration, 0, 1)
 
-	if progress >= 1 then
+	if elapsedProgress >= 1 then
 		cooldowns[key] = nil
 		stopCooldown()
 		return
 	end
 
+	local startingFill = cooldown.startingFill or 1
+	local visibleFill = startingFill * (1 - elapsedProgress)
+
 	active = true
 	activeMode = "cooldown"
 	showDial()
-	DialView.setCooldownProgress(progress)
+	if cooldown.useVisibleFill then
+		DialView.setCooldownVisibleFill(visibleFill)
+	else
+		DialView.setCooldownProgress(elapsedProgress)
+	end
 end)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
@@ -200,14 +266,14 @@ end)
 
 UserInputService.InputEnded:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		stopBowCharge()
+		releaseBowCharge()
 	end
 end)
 
 weaponAction.OnClientEvent:Connect(function(kind: string, payload: any)
 	if kind == "Cooldown" and typeof(payload) == "table" and typeof(payload.seconds) == "number" then
 		stopBowCharge()
-		startCooldown(payload.seconds)
+		startCooldown(payload.seconds, payload.initialProgress)
 	end
 end)
 
