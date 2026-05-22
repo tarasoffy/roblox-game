@@ -37,6 +37,7 @@ local WeaponConfig = {
 		radius = 10,
 		cooldown = 0.35,
 		damage = 25,
+		impactDelay = 0.3,
 	},
 }
 
