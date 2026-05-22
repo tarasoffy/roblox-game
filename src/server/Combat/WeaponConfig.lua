@@ -16,6 +16,7 @@ local WeaponConfig = {
 	Bow = {
 		range = 220,
 		cooldown = 0.9,
+		chargeTime = 0.5,
 		damage = 25,
 		speed = 170,
 		gravity = 30,
