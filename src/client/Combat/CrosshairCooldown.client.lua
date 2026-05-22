@@ -22,6 +22,9 @@ local THICKNESS = 3         -- толщина меток
 local BIG_LEN = 12          -- длина больших меток (верх/низ/лево/право)
 local SMALL_LEN = 8         -- длина маленьких (диагонали)
 local COLOR = Color3.new(1, 1, 1)
+local CHARGE_COLOR = COLOR
+local BOW_CHARGE_TIME = 0.5
+local READY_PULSE_SECONDS = 0.16
 local ALPHA_ON = 0          -- прозрачность метки когда "горит" (0 = видно)
 local ALPHA_OFF = 0.85      -- прозрачность метки когда "погашена" (0.85 почти не видно)
 
@@ -39,6 +42,10 @@ root.Size = UDim2.fromOffset(1, 1)
 root.AnchorPoint = Vector2.new(0.5, 0.5)
 root.Visible = false
 root.Parent = gui
+
+local rootScale = Instance.new("UIScale")
+rootScale.Scale = 1
+rootScale.Parent = root
 
 -- ====== HELPERS ======
 local function makeTick(name: string, length: number): Frame
@@ -104,7 +111,9 @@ layoutTicks()
 local function setAllOn()
 	for i = 1, #ticks do
 		ticks[i].BackgroundTransparency = ALPHA_ON
+		ticks[i].BackgroundColor3 = COLOR
 	end
+	rootScale.Scale = 1
 end
 
 local function getEquippedToolName(): string?
@@ -116,6 +125,11 @@ end
 
 -- ====== STATE ======
 local active = false
+local activeMode: "cooldown" | "charge" | nil = nil
+local chargeStartT = 0
+local chargeDuration = 0
+local chargeReady = false
+local readyPulseStartT: number? = nil
 
 local cooldowns = {}
 
@@ -155,6 +169,9 @@ local function startCooldown(seconds: number)
 	end
 
 	active = true
+	activeMode = "cooldown"
+	chargeReady = false
+	readyPulseStartT = nil
 
 	cooldowns[key] = {
 		startT = os.clock(),
@@ -168,9 +185,50 @@ local function startCooldown(seconds: number)
 	setAllOn()
 end
 
-local function stopCooldown()
+local function startBowCharge()
+	if getEquippedToolName() ~= "Bow" then return end
+	if BOW_CHARGE_TIME <= 0 then return end
+	if activeMode ~= nil then return end
+
+	active = true
+	activeMode = "charge"
+	chargeStartT = os.clock()
+	chargeDuration = BOW_CHARGE_TIME
+	chargeReady = false
+	readyPulseStartT = nil
+
+	UserInputService.MouseIconEnabled = false
+	root.Visible = true
+	setAllOn()
+	for i = 1, #ticks do
+		ticks[i].BackgroundTransparency = ALPHA_OFF
+		ticks[i].BackgroundColor3 = CHARGE_COLOR
+	end
+end
+
+local function stopBowCharge()
+	if activeMode ~= "charge" then return end
+
 	active = false
+	activeMode = nil
+	chargeReady = false
+	readyPulseStartT = nil
 	root.Visible = false
+	rootScale.Scale = 1
+
+	UserInputService.MouseIconEnabled = true
+end
+
+local function stopCooldown()
+	if activeMode == "charge" then
+		stopBowCharge()
+		return
+	end
+
+	active = false
+	activeMode = nil
+	root.Visible = false
+	rootScale.Scale = 1
 
 	-- Возвращаем обычный курсор
 	UserInputService.MouseIconEnabled = true
@@ -184,6 +242,44 @@ RunService.RenderStepped:Connect(function()
 
 	-- привязка циферблата к мыши
 	root.Position = UDim2.fromOffset(m.X, m.Y)
+
+	if activeMode == "charge" then
+		if getEquippedToolName() ~= "Bow" or not UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+			stopBowCharge()
+			return
+		end
+
+		local p = math.clamp((os.clock() - chargeStartT) / chargeDuration, 0, 1)
+		local total = #ticks
+		local onCount = math.floor(p * total + 1e-6)
+		local clockwiseOrder = { 1, 8, 7, 6, 5, 4, 3, 2 }
+
+		for orderIndex, tickIndex in ipairs(clockwiseOrder) do
+			ticks[tickIndex].BackgroundTransparency = orderIndex <= onCount and ALPHA_ON or ALPHA_OFF
+			ticks[tickIndex].BackgroundColor3 = CHARGE_COLOR
+		end
+
+		if p >= 1 and not chargeReady then
+			chargeReady = true
+			readyPulseStartT = os.clock()
+			setAllOn()
+			for i = 1, #ticks do
+				ticks[i].BackgroundColor3 = CHARGE_COLOR
+			end
+		end
+
+		if readyPulseStartT then
+			local pulseP = math.clamp((os.clock() - readyPulseStartT) / READY_PULSE_SECONDS, 0, 1)
+			rootScale.Scale = 1 + math.sin(pulseP * math.pi) * 0.25
+
+			if pulseP >= 1 then
+				readyPulseStartT = nil
+				rootScale.Scale = 1
+			end
+		end
+
+		return
+	end
 
 	local toolName = getEquippedToolName()
 	local key = getCooldownKey(toolName)
@@ -210,6 +306,7 @@ RunService.RenderStepped:Connect(function()
 	end
 
 	active = true
+	activeMode = "cooldown"
 	root.Visible = true
 	UserInputService.MouseIconEnabled = false
 
@@ -226,8 +323,23 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ====== EVENTS ======
+UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
+	if gameProcessedEvent then return end
+
+	if input.UserInputType == Enum.UserInputType.MouseButton1 and getEquippedToolName() == "Bow" then
+		startBowCharge()
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		stopBowCharge()
+	end
+end)
+
 weaponAction.OnClientEvent:Connect(function(kind: string, payload: any)
 	if kind == "Cooldown" and typeof(payload) == "table" and typeof(payload.seconds) == "number" then
+		stopBowCharge()
 		startCooldown(payload.seconds)
 	end
 end)
