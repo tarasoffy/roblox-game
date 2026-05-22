@@ -38,7 +38,7 @@ local function makeLabel(parent: Instance, text: string, yOffset: number, config
 	label.Text = text
 	label.TextColor3 = Color3.new(1, 1, 1)
 	label.TextSize = config.LABEL_TEXT_SIZE
-	label.Font = Enum.Font.GothamMedium
+	label.Font = Enum.Font.GothamBold
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.TextYAlignment = Enum.TextYAlignment.Center
 	label.ZIndex = 12

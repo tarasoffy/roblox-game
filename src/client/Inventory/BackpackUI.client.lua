@@ -52,9 +52,9 @@ title.Parent = container
 title.Position = UDim2.fromOffset(10, 6)
 title.Size = UDim2.new(1, -20, 0, 22)
 title.BackgroundTransparency = 1
-title.Text = "Backpack"
+title.Text = "BACKPACK"
 title.Font = Enum.Font.GothamBold
-title.TextSize = 16
+title.TextSize = 12
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -65,9 +65,9 @@ capacityText.Position = UDim2.fromOffset(10, 32)
 capacityText.Size = UDim2.new(1, -20, 0, 22)
 capacityText.BackgroundTransparency = 1
 capacityText.Text = ("0 / %d"):format(CAPACITY)
-capacityText.Font = Enum.Font.Gotham
+capacityText.Font = Enum.Font.GothamMedium
 capacityText.TextSize = 14
-capacityText.TextColor3 = Color3.fromRGB(200, 200, 200)
+capacityText.TextColor3 = Color3.fromRGB(230, 230, 230)
 capacityText.TextXAlignment = Enum.TextXAlignment.Left
 
 local barBG = Instance.new("Frame")
