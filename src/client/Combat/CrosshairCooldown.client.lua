@@ -1,11 +1,5 @@
--- StarterPlayerScripts/CooldownDial.client.lua
--- Нативный индикатор КД вокруг курсора: мини-циферблат из 8 линий.
--- 4 большие (N/E/S/W) + 4 маленькие (диагонали).
--- Во время КД метки "исчезают" ПРОТИВ часовой (гаснут по порядку CCW).
--- Без картинок. Видно только во время КД.
---
--- Сервер должен слать:
--- weaponAction:FireClient(player, "Cooldown", { seconds = cfg.cooldown })
+-- StarterPlayerScripts/Combat/CrosshairCooldown.client.lua
+-- Server sends: weaponAction:FireClient(player, "Cooldown", { seconds = cfg.cooldown })
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -13,117 +7,13 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 
+local Config = require(script.Parent:WaitForChild("CooldownDialConfig"))
+local DialView = require(script.Parent:WaitForChild("CooldownDialView"))
+
 local player = Players.LocalPlayer
 local weaponAction = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("WeaponAction")
+DialView.create(player:WaitForChild("PlayerGui"))
 
--- ====== НАСТРОЙКИ ВНЕШНЕГО ВИДА ======
-local RADIUS = 18           -- расстояние от курсора до меток
-local THICKNESS = 3         -- толщина меток
-local BIG_LEN = 12          -- длина больших меток (верх/низ/лево/право)
-local SMALL_LEN = 8         -- длина маленьких (диагонали)
-local COLOR = Color3.new(1, 1, 1)
-local CHARGE_COLOR = COLOR
-local BOW_CHARGE_TIME = 0.5
-local READY_PULSE_SECONDS = 0.16
-local ALPHA_ON = 0          -- прозрачность метки когда "горит" (0 = видно)
-local ALPHA_OFF = 0.85      -- прозрачность метки когда "погашена" (0.85 почти не видно)
-
--- ====== GUI ROOT ======
-local gui = Instance.new("ScreenGui")
-gui.Name = "CooldownDialGui"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = false -- мы сами вычитаем inset при позиционировании
-gui.Parent = player:WaitForChild("PlayerGui")
-
-local root = Instance.new("Frame")
-root.Name = "Root"
-root.BackgroundTransparency = 1
-root.Size = UDim2.fromOffset(1, 1)
-root.AnchorPoint = Vector2.new(0.5, 0.5)
-root.Visible = false
-root.Parent = gui
-
-local rootScale = Instance.new("UIScale")
-rootScale.Scale = 1
-rootScale.Parent = root
-
--- ====== HELPERS ======
-local function makeTick(name: string, length: number): Frame
-	local f = Instance.new("Frame")
-	f.Name = name
-	f.AnchorPoint = Vector2.new(0.5, 0.5)
-	f.Size = UDim2.fromOffset(THICKNESS, length)
-	f.BackgroundColor3 = COLOR
-	f.BackgroundTransparency = ALPHA_ON
-	f.BorderSizePixel = 0
-	f.Parent = root
-
-	local c = Instance.new("UICorner")
-	c.CornerRadius = UDim.new(1, 0)
-	c.Parent = f
-
-	return f
-end
-
--- 8 меток (порядок CCW исчезания):
--- стартуем сверху (12 часов) и идём ПРОТИВ часовой:
--- N -> NW -> W -> SW -> S -> SE -> E -> NE
-local ticks = {}
-
-ticks[1] = makeTick("N",  BIG_LEN)
-ticks[2] = makeTick("NW", SMALL_LEN)
-ticks[3] = makeTick("W",  BIG_LEN)
-ticks[4] = makeTick("SW", SMALL_LEN)
-ticks[5] = makeTick("S",  BIG_LEN)
-ticks[6] = makeTick("SE", SMALL_LEN)
-ticks[7] = makeTick("E",  BIG_LEN)
-ticks[8] = makeTick("NE", SMALL_LEN)
-
--- позиции вокруг курсора
-local sqrt2 = math.sqrt(2)
-local function layoutTicks()
-	ticks[1].Position = UDim2.fromOffset(0, -RADIUS)
-	ticks[1].Rotation = 0
-
-	ticks[2].Position = UDim2.fromOffset(-RADIUS / sqrt2, -RADIUS / sqrt2)
-	ticks[2].Rotation = -45
-
-	ticks[3].Position = UDim2.fromOffset(-RADIUS, 0)
-	ticks[3].Rotation = -90
-
-	ticks[4].Position = UDim2.fromOffset(-RADIUS / sqrt2, RADIUS / sqrt2)
-	ticks[4].Rotation = -135
-
-	ticks[5].Position = UDim2.fromOffset(0, RADIUS)
-	ticks[5].Rotation = 180
-
-	ticks[6].Position = UDim2.fromOffset(RADIUS / sqrt2, RADIUS / sqrt2)
-	ticks[6].Rotation = 135
-
-	ticks[7].Position = UDim2.fromOffset(RADIUS, 0)
-	ticks[7].Rotation = 90
-
-	ticks[8].Position = UDim2.fromOffset(RADIUS / sqrt2, -RADIUS / sqrt2)
-	ticks[8].Rotation = 45
-end
-layoutTicks()
-
-local function setAllOn()
-	for i = 1, #ticks do
-		ticks[i].BackgroundTransparency = ALPHA_ON
-		ticks[i].BackgroundColor3 = COLOR
-	end
-	rootScale.Scale = 1
-end
-
-local function getEquippedToolName(): string?
-	local char = player.Character
-	if not char then return nil end
-	local tool = char:FindFirstChildOfClass("Tool")
-	return tool and tool.Name or nil
-end
-
--- ====== STATE ======
 local active = false
 local activeMode: "cooldown" | "charge" | nil = nil
 local chargeStartT = 0
@@ -139,6 +29,14 @@ local FIREARM_TOOLS = {
 	Shotgun = true,
 }
 
+local function getEquippedToolName(): string?
+	local char = player.Character
+	if not char then return nil end
+
+	local tool = char:FindFirstChildOfClass("Tool")
+	return tool and tool.Name or nil
+end
+
 local function getCooldownKey(toolName: string?): string?
 	if not toolName then return nil end
 
@@ -147,6 +45,16 @@ local function getCooldownKey(toolName: string?): string?
 	end
 
 	return toolName
+end
+
+local function showDial()
+	UserInputService.MouseIconEnabled = false
+	DialView.setVisible(true)
+end
+
+local function hideDial()
+	DialView.reset()
+	UserInputService.MouseIconEnabled = true
 end
 
 local function startCooldown(seconds: number)
@@ -178,32 +86,24 @@ local function startCooldown(seconds: number)
 		duration = seconds,
 	}
 
-	-- Прячем обычный курсор на время КД, а наш циферблат становится "курсором"
-	UserInputService.MouseIconEnabled = false
-
-	root.Visible = true
-	setAllOn()
+	showDial()
+	DialView.setAllOn()
 end
 
 local function startBowCharge()
 	if getEquippedToolName() ~= "Bow" then return end
-	if BOW_CHARGE_TIME <= 0 then return end
+	if Config.BOW_CHARGE_TIME <= 0 then return end
 	if activeMode ~= nil then return end
 
 	active = true
 	activeMode = "charge"
 	chargeStartT = os.clock()
-	chargeDuration = BOW_CHARGE_TIME
+	chargeDuration = Config.BOW_CHARGE_TIME
 	chargeReady = false
 	readyPulseStartT = nil
 
-	UserInputService.MouseIconEnabled = false
-	root.Visible = true
-	setAllOn()
-	for i = 1, #ticks do
-		ticks[i].BackgroundTransparency = ALPHA_OFF
-		ticks[i].BackgroundColor3 = CHARGE_COLOR
-	end
+	showDial()
+	DialView.setChargeInitial()
 end
 
 local function stopBowCharge()
@@ -213,10 +113,8 @@ local function stopBowCharge()
 	activeMode = nil
 	chargeReady = false
 	readyPulseStartT = nil
-	root.Visible = false
-	rootScale.Scale = 1
 
-	UserInputService.MouseIconEnabled = true
+	hideDial()
 end
 
 local function stopCooldown()
@@ -227,21 +125,13 @@ local function stopCooldown()
 
 	active = false
 	activeMode = nil
-	root.Visible = false
-	rootScale.Scale = 1
-
-	-- Возвращаем обычный курсор
-	UserInputService.MouseIconEnabled = true
+	hideDial()
 end
 
--- ====== UPDATE LOOP ======
 RunService.RenderStepped:Connect(function()
-	-- позиция "как у курсора" на разных экранах: вычитаем GuiInset (верхняя панель)
 	local inset = GuiService:GetGuiInset()
-	local m = UserInputService:GetMouseLocation() - inset
-
-	-- привязка циферблата к мыши
-	root.Position = UDim2.fromOffset(m.X, m.Y)
+	local mousePosition = UserInputService:GetMouseLocation() - inset
+	DialView.setPosition(mousePosition)
 
 	if activeMode == "charge" then
 		if getEquippedToolName() ~= "Bow" or not UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
@@ -249,32 +139,22 @@ RunService.RenderStepped:Connect(function()
 			return
 		end
 
-		local p = math.clamp((os.clock() - chargeStartT) / chargeDuration, 0, 1)
-		local total = #ticks
-		local onCount = math.floor(p * total + 1e-6)
-		local clockwiseOrder = { 1, 8, 7, 6, 5, 4, 3, 2 }
+		local progress = math.clamp((os.clock() - chargeStartT) / chargeDuration, 0, 1)
+		DialView.setChargeProgress(progress)
 
-		for orderIndex, tickIndex in ipairs(clockwiseOrder) do
-			ticks[tickIndex].BackgroundTransparency = orderIndex <= onCount and ALPHA_ON or ALPHA_OFF
-			ticks[tickIndex].BackgroundColor3 = CHARGE_COLOR
-		end
-
-		if p >= 1 and not chargeReady then
+		if progress >= 1 and not chargeReady then
 			chargeReady = true
 			readyPulseStartT = os.clock()
-			setAllOn()
-			for i = 1, #ticks do
-				ticks[i].BackgroundColor3 = CHARGE_COLOR
-			end
+			DialView.setChargeReady()
 		end
 
 		if readyPulseStartT then
-			local pulseP = math.clamp((os.clock() - readyPulseStartT) / READY_PULSE_SECONDS, 0, 1)
-			rootScale.Scale = 1 + math.sin(pulseP * math.pi) * 0.25
+			local pulseProgress = math.clamp((os.clock() - readyPulseStartT) / Config.READY_PULSE_SECONDS, 0, 1)
+			DialView.setScale(1 + math.sin(pulseProgress * math.pi) * 0.25)
 
-			if pulseP >= 1 then
+			if pulseProgress >= 1 then
 				readyPulseStartT = nil
-				rootScale.Scale = 1
+				DialView.setScale(1)
 			end
 		end
 
@@ -296,10 +176,9 @@ RunService.RenderStepped:Connect(function()
 		return
 	end
 
-	local t = os.clock() - cooldown.startT
-	local p = math.clamp(t / cooldown.duration, 0, 1)
+	local progress = math.clamp((os.clock() - cooldown.startT) / cooldown.duration, 0, 1)
 
-	if p >= 1 then
+	if progress >= 1 then
 		cooldowns[key] = nil
 		stopCooldown()
 		return
@@ -307,22 +186,10 @@ RunService.RenderStepped:Connect(function()
 
 	active = true
 	activeMode = "cooldown"
-	root.Visible = true
-	UserInputService.MouseIconEnabled = false
-
-	local total = #ticks
-	local offCount = math.floor(p * total + 1e-6)
-
-	for i = 1, total do
-		if i <= offCount then
-			ticks[i].BackgroundTransparency = ALPHA_OFF
-		else
-			ticks[i].BackgroundTransparency = ALPHA_ON
-		end
-	end
+	showDial()
+	DialView.setCooldownProgress(progress)
 end)
 
--- ====== EVENTS ======
 UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
 	if gameProcessedEvent then return end
 
@@ -344,7 +211,6 @@ weaponAction.OnClientEvent:Connect(function(kind: string, payload: any)
 	end
 end)
 
--- ====== TOOL WATCHER: если игрок сменил/убрал оружие во время КД — скрываем индикатор ======
 local function bindCharacter(char: Model)
 	char.ChildAdded:Connect(function(child)
 		if child:IsA("Tool") then
@@ -353,8 +219,7 @@ local function bindCharacter(char: Model)
 
 			if key and cooldowns[key] then
 				active = true
-				root.Visible = true
-				UserInputService.MouseIconEnabled = false
+				showDial()
 			end
 		end
 	end)
@@ -378,7 +243,6 @@ end
 player.CharacterAdded:Connect(function(char)
 	bindCharacter(char)
 
-	-- на всякий случай: если персона пересоздалась, не оставляем курсор скрытым
 	if not active then
 		UserInputService.MouseIconEnabled = true
 	end
