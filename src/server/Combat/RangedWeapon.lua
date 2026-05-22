@@ -20,6 +20,26 @@ function RangedWeapon.Handle(player: Player, tool: Tool, data: any, cfg, depende
 	end
 
 	local cooldown = cfg.cooldown or 0
+	local isBow = cfg.projectile == "Arrow" or tool.Name == "Bow"
+	local bowChargePower: number? = nil
+
+	if isBow then
+		local chargeTime = cfg.chargeTime or 1
+		local minChargeToShoot = cfg.minChargeToShoot or 0
+		local serverChargeStartedAt = dependencies.BowChargeStartedAt
+
+		if typeof(serverChargeStartedAt) ~= "number" or chargeTime <= 0 then
+			return
+		end
+
+		local requestedChargePower = typeof(data.chargePower) == "number" and data.chargePower or 0
+		local serverChargePower = math.clamp((os.clock() - serverChargeStartedAt) / chargeTime, 0, 1)
+		bowChargePower = math.clamp(math.min(requestedChargePower, serverChargePower + 0.05), 0, 1)
+
+		if bowChargePower < minChargeToShoot then
+			return
+		end
+	end
 
 	if CombatCooldowns.IsFirearm(tool.Name) then
 		local remaining = CombatCooldowns.GetFirearmCooldownRemaining(player)
@@ -48,6 +68,7 @@ function RangedWeapon.Handle(player: Player, tool: Tool, data: any, cfg, depende
 		weaponAction:FireClient(player, "Cooldown", {
 			seconds = cooldown,
 			sourceToolName = tool.Name,
+			initialProgress = bowChargePower,
 		})
 	end
 
@@ -60,15 +81,16 @@ function RangedWeapon.Handle(player: Player, tool: Tool, data: any, cfg, depende
 
 	local origin = CombatHelpers.GetMuzzleWorldPos(tool, char)
 
-	if cfg.projectile == "Arrow" or tool.Name == "Bow" then
+	if isBow then
 		BowWeapon.Simulate(player, origin, data.aimPos, cfg, {
 			CombatHelpers = CombatHelpers,
 			AnimalsService = dependencies.AnimalsService,
 			bulletFX = bulletFX,
 			NextProjectileId = dependencies.NextProjectileId,
+			ChargePower = bowChargePower,
 		})
 
-		return
+		return true
 	end
 
 	if cfg.pellets and cfg.pellets > 1 then
@@ -80,7 +102,7 @@ function RangedWeapon.Handle(player: Player, tool: Tool, data: any, cfg, depende
 			RNG = dependencies.RNG,
 		})
 
-		return
+		return true
 	end
 
 	if not cfg.range or not cfg.speed then
@@ -98,6 +120,8 @@ function RangedWeapon.Handle(player: Player, tool: Tool, data: any, cfg, depende
 		bulletFX = bulletFX,
 		NextProjectileId = dependencies.NextProjectileId,
 	})
+
+	return true
 end
 
 return RangedWeapon

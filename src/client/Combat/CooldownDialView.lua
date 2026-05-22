@@ -152,4 +152,13 @@ function CooldownDialView.setCooldownProgress(progress: number)
 	end
 end
 
+function CooldownDialView.setCooldownVisibleFill(fill: number)
+	local onCount = math.floor(math.clamp(fill, 0, 1) * #ticks + 1e-6)
+
+	for orderIndex, tickIndex in ipairs(CLOCKWISE_ORDER) do
+		ticks[tickIndex].BackgroundTransparency = orderIndex <= onCount and Config.ALPHA_ON or Config.ALPHA_OFF
+		ticks[tickIndex].BackgroundColor3 = Config.COLOR
+	end
+end
+
 return CooldownDialView

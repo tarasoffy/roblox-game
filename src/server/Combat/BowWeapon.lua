@@ -18,8 +18,9 @@ function BowWeapon.Simulate(player: Player, origin: Vector3, aimPos: Vector3, cf
 	end
 
 	local dirUnit = vectorToAim.Unit
-	local maxDist = cfg.range or 220
-	local speed = cfg.speed or 170
+	local chargePower = math.clamp(dependencies.ChargePower or 1, 0, 1)
+	local maxDist = (cfg.range or 220) * chargePower
+	local speed = (cfg.speed or 170) * chargePower
 	local gravity = cfg.gravity or 75
 	local damage = cfg.damage or 25
 
