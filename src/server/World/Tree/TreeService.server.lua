@@ -7,12 +7,14 @@ local TreeConfig = require(script.Parent:WaitForChild("TreeConfig"))
 local TreeRemotes = require(script.Parent:WaitForChild("TreeRemotes"))
 local TreeUtils = require(script.Parent:WaitForChild("TreeUtils"))
 local TreeDrops = require(script.Parent:WaitForChild("TreeDrops"))
+local WeaponConfig = require(script.Parent.Parent.Parent:WaitForChild("Combat"):WaitForChild("WeaponConfig"))
 
 local treeRemotes = TreeRemotes.Get()
 local chopEvent = treeRemotes.ChopTree
 local feedbackEvent = treeRemotes.TreeHitFeedback
 
 local lastChopTimeByPlayer: {[Player]: number} = {}
+local pendingChopsByPlayer: {[Player]: boolean} = {}
 
 local function canChop(player: Player): boolean
 	local now = os.clock()
@@ -56,14 +58,28 @@ local function damageTree(treeModel: Model): number
 	return hitsLeft
 end
 
-chopEvent.OnServerEvent:Connect(function(player: Player)
-	if not canChop(player) then
-		return
+local function getEquippedAxe(character: Model): Tool?
+	local tool = character:FindFirstChildOfClass("Tool")
+	if tool and tool.Name == "Axe" then
+		return tool
 	end
 
+	return nil
+end
+
+local function applyChopImpact(player: Player, tool: Tool)
 	local character = player.Character
 
 	if not character then
+		return
+	end
+
+	if tool.Parent ~= character then
+		return
+	end
+
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid and humanoid.Health <= 0 then
 		return
 	end
 
@@ -94,8 +110,61 @@ chopEvent.OnServerEvent:Connect(function(player: Player)
 		treeModel:Destroy()
 		TreeDrops.SpawnLogs(dropPosition, TreeConfig)
 	end
+end
+
+chopEvent.OnServerEvent:Connect(function(player: Player)
+	if pendingChopsByPlayer[player] then
+		return
+	end
+
+	if not canChop(player) then
+		return
+	end
+
+	local character = player.Character
+	if not character then
+		return
+	end
+
+	local axeTool = getEquippedAxe(character)
+	if not axeTool then
+		return
+	end
+
+	local axeConfig = WeaponConfig.Axe or {}
+	local impactDelay = axeConfig.impactDelay or 0
+
+	if impactDelay <= 0 then
+		applyChopImpact(player, axeTool)
+		return
+	end
+
+	pendingChopsByPlayer[player] = true
+	local unequipped = false
+	local ancestryConn
+
+	ancestryConn = axeTool.AncestryChanged:Connect(function()
+		if axeTool.Parent ~= character then
+			unequipped = true
+		end
+	end)
+
+	task.delay(impactDelay, function()
+		pendingChopsByPlayer[player] = nil
+
+		if ancestryConn then
+			ancestryConn:Disconnect()
+		end
+
+		if unequipped then
+			return
+		end
+
+		applyChopImpact(player, axeTool)
+	end)
 end)
 
 Players.PlayerRemoving:Connect(function(player: Player)
 	lastChopTimeByPlayer[player] = nil
+	pendingChopsByPlayer[player] = nil
 end)

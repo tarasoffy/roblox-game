@@ -106,5 +106,6 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	CombatCooldowns.ClearPlayer(player)
+	MeleeWeapon.ClearPlayer(player)
 	bowChargeStartedAt[player] = nil
 end)
