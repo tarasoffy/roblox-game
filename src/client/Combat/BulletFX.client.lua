@@ -95,7 +95,7 @@ local function makeArrowFX(origin: Vector3)
 	trail.Enabled = true
 
 	-- Длина “воздушного” шлейфа (чем больше, тем длиннее хвост)
-	trail.Lifetime = 0.65
+	trail.Lifetime = 0.325
 	trail.MinLength = 0.01
 
 	-- Белый цвет
