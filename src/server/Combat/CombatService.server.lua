@@ -44,6 +44,8 @@ end
 
 
 weaponAction.OnServerEvent:Connect(function(player: Player, action: string, data: any)
+	print("[CombatDebug] server action received", "player=", player.Name, "action=", action)
+
 	local char = CombatHelpers.GetCharacter(player)
 	if not char then return end
 
@@ -54,6 +56,7 @@ weaponAction.OnServerEvent:Connect(function(player: Player, action: string, data
 
 	local tool = CombatHelpers.GetEquippedTool(char)
 	if not tool then return end
+	print("[CombatDebug] server equipped tool", "player=", player.Name, "toolName=", tool.Name)
 
 	if action == "ChargeStart" then
 		if tool.Name == "Bow" then
@@ -65,6 +68,7 @@ weaponAction.OnServerEvent:Connect(function(player: Player, action: string, data
 
 	if action == "Shoot" then
 		local cfg = CONFIG[tool.Name]
+		print("[CombatDebug] server weapon config", "toolName=", tool.Name, "hasConfig=", cfg ~= nil)
 
 		local shotHandled = RangedWeapon.Handle(player, tool, data, cfg, {
 			weaponAction = weaponAction,

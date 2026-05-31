@@ -6,6 +6,7 @@ local firearmCooldownUntil: {[Player]: number} = {}
 local FIREARM_TOOLS = {
 	Rifle = true,
 	Deagle = true,
+	Revolver = true,
 	Shotgun = true,
 }
 
