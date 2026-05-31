@@ -13,6 +13,13 @@ local WeaponConfig = {
 		speed = 300,
 	},
 
+	Revolver = {
+		range = 300,
+		cooldown = 1.0,
+		damage = 20,
+		speed = 300,
+	},
+
 	Bow = {
 		range = 220,
 		cooldown = 0.9,

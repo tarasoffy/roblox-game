@@ -27,6 +27,7 @@ local cooldowns = {}
 local FIREARM_TOOLS = {
 	Rifle = true,
 	Deagle = true,
+	Revolver = true,
 	Shotgun = true,
 }
 
@@ -58,12 +59,12 @@ local function hideDial()
 	UserInputService.MouseIconEnabled = true
 end
 
-local function getAimPosition(): Vector3?
+local function getAimPosition(screenPosition: Vector2?): Vector3?
 	local camera = Workspace.CurrentCamera
 	if not camera then return nil end
 
-	local mousePosition = UserInputService:GetMouseLocation()
-	local ray = camera:ViewportPointToRay(mousePosition.X, mousePosition.Y)
+	local aimScreenPosition = screenPosition or UserInputService:GetMouseLocation()
+	local ray = camera:ViewportPointToRay(aimScreenPosition.X, aimScreenPosition.Y)
 	local char = player.Character
 
 	local params = RaycastParams.new()
@@ -171,6 +172,19 @@ local function releaseBowCharge()
 	})
 end
 
+local function shootFirearm(screenPosition: Vector2?)
+	local toolName = getEquippedToolName()
+	if not toolName or not FIREARM_TOOLS[toolName] then return end
+
+	local aimPos = getAimPosition(screenPosition)
+	if not aimPos then return end
+
+	print("[CombatDebug] client firearm shoot requested", "toolName=", toolName, "aimPos=", aimPos)
+	weaponAction:FireServer("Shoot", {
+		aimPos = aimPos,
+	})
+end
+
 local function stopCooldown()
 	if activeMode == "charge" then
 		stopBowCharge()
@@ -259,8 +273,23 @@ end)
 UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
 	if gameProcessedEvent then return end
 
-	if input.UserInputType == Enum.UserInputType.MouseButton1 and getEquippedToolName() == "Bow" then
-		startBowCharge()
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		local toolName = getEquippedToolName()
+
+		if toolName == "Bow" then
+			startBowCharge()
+			return
+		end
+
+		if toolName and FIREARM_TOOLS[toolName] then
+			shootFirearm()
+		end
+	elseif input.UserInputType == Enum.UserInputType.Touch then
+		local toolName = getEquippedToolName()
+
+		if toolName and FIREARM_TOOLS[toolName] then
+			shootFirearm(Vector2.new(input.Position.X, input.Position.Y))
+		end
 	end
 end)
 
