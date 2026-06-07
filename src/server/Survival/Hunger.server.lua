@@ -17,6 +17,9 @@ local StatusEffectsService = require(
 -------------------------------------------------
 local HUNGER_MAX = 100
 
+-- Temporary for character/spawn testing: keep the Hunger system and HUD alive, but pause automatic drain.
+local TEMP_DISABLE_HUNGER_DRAIN_FOR_SPAWN_TESTING = true
+
 local DRAIN_PER_MIN = 8 -- 8
 local DRAIN_PER_SEC = DRAIN_PER_MIN / 60
 
@@ -70,6 +73,21 @@ task.spawn(function()
 			local h = plr:GetAttribute("Hunger")
 			if typeof(h) ~= "number" then
 				h = maxH
+			end
+
+			if TEMP_DISABLE_HUNGER_DRAIN_FOR_SPAWN_TESTING then
+				if h ~= maxH then
+					plr:SetAttribute("Hunger", maxH)
+				end
+
+				local hum = getHumanoid(plr)
+				if hum then
+					StatusEffectsService.RemoveSpeedEffect(plr, hum, "Starving")
+				else
+					plr:SetAttribute("Starving", false)
+				end
+
+				continue
 			end
 
 			-- drain hunger
