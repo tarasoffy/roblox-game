@@ -23,6 +23,7 @@ local ANIMAL_CHARACTERS: {[string]: boolean} = {
 
 local spawningPlayers: {[Player]: boolean} = {}
 local selectedCharacters: {[Player]: string} = {}
+local random = Random.new()
 
 local function log(message: string)
 	print("[CharacterSpawn] " .. message)
@@ -59,14 +60,53 @@ end
 local remotesFolder = ensureFolder(ReplicatedStorage, "Remotes")
 local selectCharacterEvent = ensureRemoteEvent(remotesFolder, "SelectCharacter")
 
-local function getSpawnCFrame(): CFrame
-	local spawnLocation = workspace:FindFirstChild("SpawnLocation", true)
-	if spawnLocation and spawnLocation:IsA("BasePart") then
-		return spawnLocation.CFrame + SPAWN_HEIGHT_OFFSET
+local function getRandomSpawnCFrame(spawnFolderName: string): CFrame
+	local spawnsFolder = workspace:FindFirstChild("Spawns")
+	if not spawnsFolder or not spawnsFolder:IsA("Folder") then
+		warnSpawn(
+			("Workspace.Spawns.%s is missing because Workspace.Spawns is missing or not a Folder; using fallback spawn."):format(
+				spawnFolderName
+			)
+		)
+		return CFrame.new(0, 5, 0)
 	end
 
-	warnSpawn("Workspace SpawnLocation not found; using fallback spawn.")
-	return CFrame.new(0, 5, 0)
+	local spawnFolder = spawnsFolder:FindFirstChild(spawnFolderName)
+	if not spawnFolder or not spawnFolder:IsA("Folder") then
+		warnSpawn(
+			("Workspace.Spawns.%s folder is missing or not a Folder; using fallback spawn."):format(
+				spawnFolderName
+			)
+		)
+		return CFrame.new(0, 5, 0)
+	end
+
+	local validSpawns: {BasePart} = {}
+	for _, child in ipairs(spawnFolder:GetChildren()) do
+		if child:IsA("BasePart") then
+			table.insert(validSpawns, child)
+		end
+	end
+
+	if #validSpawns == 0 then
+		warnSpawn(
+			("Workspace.Spawns.%s has no valid BasePart/SpawnLocation children; using fallback spawn."):format(
+				spawnFolderName
+			)
+		)
+		return CFrame.new(0, 5, 0)
+	end
+
+	local spawnPoint = validSpawns[random:NextInteger(1, #validSpawns)]
+	return spawnPoint.CFrame + SPAWN_HEIGHT_OFFSET
+end
+
+local function getHumanSpawnCFrame(): CFrame
+	return getRandomSpawnCFrame("HumanSpawns")
+end
+
+local function getAnimalSpawnCFrame(): CFrame
+	return getRandomSpawnCFrame("AnimalSpawns")
 end
 
 local function getAnimalTemplate(animalName: string): Model?
@@ -225,7 +265,7 @@ local function spawnAsHuman(player: Player)
 	player:LoadCharacter()
 	local character = player.Character
 	if character then
-		character:PivotTo(getSpawnCFrame())
+		character:PivotTo(getHumanSpawnCFrame())
 	end
 
 	log(("Spawn complete for %s as Human."):format(player.Name))
@@ -251,7 +291,7 @@ local function spawnAsAnimal(player: Player, animalName: string, oldCharacter: M
 	configureHumanoid(humanoid)
 
 	animalCharacter.Parent = workspace
-	animalCharacter:PivotTo(getSpawnCFrame())
+	animalCharacter:PivotTo(getAnimalSpawnCFrame())
 	player.Character = animalCharacter
 
 	setNetworkOwner(player, rootPart)

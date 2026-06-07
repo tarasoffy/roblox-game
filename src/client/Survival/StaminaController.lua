@@ -14,6 +14,9 @@ local isRunning = false
 local lastDrainTime = 0
 local exhausted = false
 
+-- Temporary for character/spawn testing: keep sprint/HUD behavior, but pause stamina drain.
+local TEMP_DISABLE_STAMINA_DRAIN_FOR_SPAWN_TESTING = true
+
 local function notifyChanged()
 	if onChanged then
 		onChanged()
@@ -109,7 +112,9 @@ function StaminaController.Update(deltaTime: number)
 	local slowed = isSlowed()
 
 	if isRunning and moving and not slowed then
-		stamina -= config.DRAIN_PER_SEC * deltaTime
+		if not TEMP_DISABLE_STAMINA_DRAIN_FOR_SPAWN_TESTING then
+			stamina -= config.DRAIN_PER_SEC * deltaTime
+		end
 
 		if stamina <= 0 then
 			stamina = 0
