@@ -6,7 +6,36 @@ local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local invEvent = ReplicatedStorage:WaitForChild("InventoryEvent")
-local Colors = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("theme"):WaitForChild("Colors"))
+
+local fallbackColors = {
+	CardDark = Color3.fromRGB(30, 30, 30),
+	PanelDark = Color3.fromRGB(60, 60, 60),
+	TextPrimary = Color3.fromRGB(255, 255, 255),
+	TextSecondary = Color3.fromRGB(230, 230, 230),
+	BorderLight = Color3.fromRGB(255, 255, 255),
+	HealthRed = Color3.fromRGB(220, 80, 80),
+	WarningYellow = Color3.fromRGB(230, 200, 80),
+	SuccessGreen = Color3.fromRGB(80, 200, 120),
+}
+fallbackColors.BackpackGreen = fallbackColors.SuccessGreen
+
+local function loadColors()
+	local shared = ReplicatedStorage:FindFirstChild("Shared")
+	local theme = shared and shared:FindFirstChild("Theme")
+	local colorsModule = theme and theme:FindFirstChild("Colors")
+
+	if colorsModule and colorsModule:IsA("ModuleScript") then
+		local ok, colors = pcall(require, colorsModule)
+		if ok and typeof(colors) == "table" then
+			return colors
+		end
+	end
+
+	warn("[BackpackUI] ReplicatedStorage.Shared.Theme.Colors missing or failed to load; using fallback UI colors.")
+	return fallbackColors
+end
+
+local Colors = loadColors()
 
 local CAPACITY = 5
 local BACKPACK_TOOL_NAME = "Backpack"

@@ -6,7 +6,32 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local player = Players.LocalPlayer
-local Colors = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("theme"):WaitForChild("Colors"))
+
+local fallbackColors = {
+	BackgroundDark = Color3.fromRGB(20, 20, 20),
+	TextPrimary = Color3.fromRGB(255, 255, 255),
+	BorderLight = Color3.fromRGB(255, 255, 255),
+	TextStrokeDark = Color3.fromRGB(0, 0, 0),
+	SuccessGreen = Color3.fromRGB(80, 200, 120),
+}
+
+local function loadColors()
+	local shared = ReplicatedStorage:FindFirstChild("Shared")
+	local theme = shared and shared:FindFirstChild("Theme")
+	local colorsModule = theme and theme:FindFirstChild("Colors")
+
+	if colorsModule and colorsModule:IsA("ModuleScript") then
+		local ok, colors = pcall(require, colorsModule)
+		if ok and typeof(colors) == "table" then
+			return colors
+		end
+	end
+
+	warn("[WeaponUnlocks] ReplicatedStorage.Shared.Theme.Colors missing or failed to load; using fallback UI colors.")
+	return fallbackColors
+end
+
+local Colors = loadColors()
 
 local REMOTES_FOLDER_NAME = "Remotes"
 local REQUEST_REMOTE_NAME = "RequestWeaponUnlock"
@@ -325,7 +350,13 @@ requestWeaponUnlock.OnClientEvent:Connect(function(status: string, weaponName: s
 	end
 
 	if status == "NotEnoughLogs" and weaponName and threshold and deliveredLogs then
-		showTemporaryMessage(("NEED %d LOGS FOR %s"):format(threshold, string.upper(weaponName)), false)
+		local remainingLogs = math.max(threshold - deliveredLogs, 0)
+
+		showTemporaryMessage(
+			("NEED %d MORE LOGS FOR %s"):format(remainingLogs, string.upper(weaponName)),
+			false
+		)
+
 		return
 	end
 
