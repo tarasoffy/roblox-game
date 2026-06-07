@@ -6,6 +6,7 @@ local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local invEvent = ReplicatedStorage:WaitForChild("InventoryEvent")
+local Colors = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("theme"):WaitForChild("Colors"))
 
 local CAPACITY = 5
 local BACKPACK_TOOL_NAME = "Backpack"
@@ -32,7 +33,7 @@ container.AnchorPoint = Vector2.new(1, 1)
 container.Position = UDim2.new(1, -SIDE_PAD, 1, -BOTTOM_PAD)
 
 container.Size = UDim2.fromOffset(220, 90)
-container.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+container.BackgroundColor3 = Colors.CardDark
 container.BackgroundTransparency = 0.15
 container.BorderSizePixel = 0
 
@@ -43,7 +44,7 @@ corner.Parent = container
 local stroke = Instance.new("UIStroke")
 stroke.Thickness = 1
 stroke.Transparency = 0.75
-stroke.Color = Color3.fromRGB(255, 255, 255)
+stroke.Color = Colors.BorderLight
 stroke.Parent = container
 
 local title = Instance.new("TextLabel")
@@ -55,7 +56,7 @@ title.BackgroundTransparency = 1
 title.Text = "BACKPACK"
 title.Font = Enum.Font.GothamBold
 title.TextSize = 12
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextColor3 = Colors.TextPrimary
 title.TextXAlignment = Enum.TextXAlignment.Left
 
 local capacityText = Instance.new("TextLabel")
@@ -67,7 +68,7 @@ capacityText.BackgroundTransparency = 1
 capacityText.Text = ("0 / %d"):format(CAPACITY)
 capacityText.Font = Enum.Font.GothamMedium
 capacityText.TextSize = 14
-capacityText.TextColor3 = Color3.fromRGB(230, 230, 230)
+capacityText.TextColor3 = Colors.TextSecondary
 capacityText.TextXAlignment = Enum.TextXAlignment.Left
 
 local barBG = Instance.new("Frame")
@@ -75,7 +76,7 @@ barBG.Name = "BarBG"
 barBG.Parent = container
 barBG.Position = UDim2.fromOffset(10, 64)
 barBG.Size = UDim2.new(1, -20, 0, 10)
-barBG.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+barBG.BackgroundColor3 = Colors.PanelDark
 barBG.BorderSizePixel = 0
 
 local barBGCorner = Instance.new("UICorner")
@@ -86,7 +87,7 @@ local barFill = Instance.new("Frame")
 barFill.Name = "BarFill"
 barFill.Parent = barBG
 barFill.Size = UDim2.new(0, 0, 1, 0)
-barFill.BackgroundColor3 = Color3.fromRGB(80, 200, 120)
+barFill.BackgroundColor3 = Colors.BackpackGreen
 barFill.BorderSizePixel = 0
 
 local barFillCorner = Instance.new("UICorner")
@@ -101,11 +102,11 @@ local function updateUI(stack: {string})
 	barFill.Size = UDim2.new(percent, 0, 1, 0)
 
 	if percent < 0.6 then
-		barFill.BackgroundColor3 = Color3.fromRGB(80, 200, 120)
+		barFill.BackgroundColor3 = Colors.BackpackGreen
 	elseif percent < 0.9 then
-		barFill.BackgroundColor3 = Color3.fromRGB(230, 200, 80)
+		barFill.BackgroundColor3 = Colors.WarningYellow
 	else
-		barFill.BackgroundColor3 = Color3.fromRGB(220, 80, 80)
+		barFill.BackgroundColor3 = Colors.HealthRed
 	end
 end
 

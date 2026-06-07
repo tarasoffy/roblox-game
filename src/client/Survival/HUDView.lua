@@ -2,11 +2,14 @@
 -- Creates and updates the survival HUD UI.
 
 local StarterGui = game:GetService("StarterGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Colors = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("theme"):WaitForChild("Colors"))
 
 local HUDView = {}
 
 local function styleCard(frame: Frame, config)
-	frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	frame.BackgroundColor3 = Colors.CardDark
 	frame.BackgroundTransparency = 0.15
 	frame.BorderSizePixel = 0
 
@@ -17,7 +20,7 @@ local function styleCard(frame: Frame, config)
 	local stroke = Instance.new("UIStroke")
 	stroke.Thickness = 1
 	stroke.Transparency = 0.75
-	stroke.Color = Color3.fromRGB(255, 255, 255)
+	stroke.Color = Colors.BorderLight
 	stroke.Parent = frame
 
 	local pad = Instance.new("UIPadding")
@@ -36,7 +39,7 @@ local function makeLabel(parent: Instance, text: string, yOffset: number, config
 	label.Size = UDim2.new(0, config.LABEL_WIDTH, 0, config.BAR_HEIGHT)
 	label.BackgroundTransparency = 1
 	label.Text = text
-	label.TextColor3 = Color3.new(1, 1, 1)
+	label.TextColor3 = Colors.TextPrimary
 	label.TextSize = config.LABEL_TEXT_SIZE
 	label.Font = Enum.Font.GothamBold
 	label.TextXAlignment = Enum.TextXAlignment.Left
@@ -56,7 +59,7 @@ local function makeBar(parent: Instance, name: string, yOffset: number, fillColo
 	bg.Position = UDim2.new(0, config.LABEL_WIDTH + 8, 0, yOffset)
 	bg.Size = UDim2.new(0, config.BAR_WIDTH, 0, config.BAR_HEIGHT)
 	bg.BackgroundTransparency = 0.35
-	bg.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	bg.BackgroundColor3 = Colors.BackgroundDark
 	bg.BorderSizePixel = 0
 	bg.ZIndex = 10
 	bg.Parent = parent
@@ -95,7 +98,7 @@ function HUDView.Create(player: Player, config)
 	damage.Name = "DamageVignette"
 	damage.Size = UDim2.fromScale(1, 1)
 	damage.Position = UDim2.fromScale(0, 0)
-	damage.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+	damage.BackgroundColor3 = Colors.DamageRed
 	damage.BackgroundTransparency = 1
 	damage.BorderSizePixel = 0
 	damage.ZIndex = 999
@@ -114,9 +117,9 @@ function HUDView.Create(player: Player, config)
 	local row1 = (config.BAR_HEIGHT + config.BAR_GAP) * 1
 	local row2 = (config.BAR_HEIGHT + config.BAR_GAP) * 2
 
-	local healthBg, healthFill = makeBar(card, "HEALTH", row0, Color3.fromRGB(220, 80, 80), config)
-	local hungerBg, hungerFill = makeBar(card, "HUNGER", row1, Color3.fromRGB(230, 180, 60), config)
-	local staminaBg, staminaFill = makeBar(card, "STAMINA", row2, Color3.fromRGB(80, 200, 80), config)
+	local healthBg, healthFill = makeBar(card, "HEALTH", row0, Colors.HealthRed, config)
+	local hungerBg, hungerFill = makeBar(card, "HUNGER", row1, Colors.HungerYellow, config)
+	local staminaBg, staminaFill = makeBar(card, "STAMINA", row2, Colors.StaminaGreen, config)
 
 	return {
 		gui = gui,
