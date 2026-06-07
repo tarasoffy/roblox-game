@@ -4,7 +4,35 @@
 local StarterGui = game:GetService("StarterGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Colors = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("theme"):WaitForChild("Colors"))
+local fallbackColors = {
+	BackgroundDark = Color3.fromRGB(20, 20, 20),
+	CardDark = Color3.fromRGB(30, 30, 30),
+	TextPrimary = Color3.fromRGB(255, 255, 255),
+	BorderLight = Color3.fromRGB(255, 255, 255),
+	HealthRed = Color3.fromRGB(220, 80, 80),
+	DamageRed = Color3.fromRGB(255, 0, 0),
+	HungerYellow = Color3.fromRGB(230, 180, 60),
+	SuccessGreen = Color3.fromRGB(80, 200, 120),
+}
+fallbackColors.StaminaGreen = fallbackColors.SuccessGreen
+
+local function loadColors()
+	local shared = ReplicatedStorage:FindFirstChild("Shared")
+	local theme = shared and shared:FindFirstChild("Theme")
+	local colorsModule = theme and theme:FindFirstChild("Colors")
+
+	if colorsModule and colorsModule:IsA("ModuleScript") then
+		local ok, colors = pcall(require, colorsModule)
+		if ok and typeof(colors) == "table" then
+			return colors
+		end
+	end
+
+	warn("[HUDView] ReplicatedStorage.Shared.Theme.Colors missing or failed to load; using fallback UI colors.")
+	return fallbackColors
+end
+
+local Colors = loadColors()
 
 local HUDView = {}
 
