@@ -34,6 +34,18 @@ function AnimalsService.IsAnimalModel(model: Instance): boolean
 	return model:FindFirstChildOfClass("Humanoid") ~= nil
 end
 
+function AnimalsService.IsDamageableAnimalModel(model: Instance): boolean
+	if not model:IsA("Model") then
+		return false
+	end
+
+	if model:GetAttribute("IsAnimalCharacter") == true then
+		return model:FindFirstChildOfClass("Humanoid") ~= nil
+	end
+
+	return AnimalsService.IsAnimalModel(model)
+end
+
 function AnimalsService.ApplyDamage(animal: Model, damage: number, hitPosition: Vector3?)
 	local humanoid = animal:FindFirstChildOfClass("Humanoid")
 
@@ -46,6 +58,11 @@ function AnimalsService.ApplyDamage(animal: Model, damage: number, hitPosition: 
 	end
 
 	if animal:GetAttribute("Dead") then
+		return
+	end
+
+	if Players:GetPlayerFromCharacter(animal) then
+		humanoid:TakeDamage(damage)
 		return
 	end
 

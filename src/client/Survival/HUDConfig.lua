@@ -11,8 +11,8 @@ local HUDConfig = {
 	LABEL_TEXT_SIZE = 12,
 
 	-- Movement
-	WALK_SPEED = 50,
-	RUN_SPEED = 100,
+	WALK_SPEED = 16,
+	RUN_SPEED = 24,
 	SLOW_SPEED = 8,
 
 	-- Stamina

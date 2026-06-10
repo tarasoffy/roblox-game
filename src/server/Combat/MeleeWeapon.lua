@@ -43,7 +43,7 @@ local function applyHit(player: Player, tool: Tool, cfg, dependencies)
 			continue
 		end
 
-		if not AnimalsService.IsAnimalModel(model) then
+		if not AnimalsService.IsDamageableAnimalModel(model) then
 			continue
 		end
 
