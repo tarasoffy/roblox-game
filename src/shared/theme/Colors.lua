@@ -19,4 +19,9 @@ local Colors = {
 Colors.BackpackGreen = Colors.SuccessGreen
 Colors.StaminaGreen = Colors.SuccessGreen
 
+Colors.PanelBackgroundColor = Colors.CardDark
+Colors.PanelBackgroundTransparency = 0.15
+Colors.PanelBorderColor = Colors.BorderLight
+Colors.PanelBorderTransparency = 0.75
+
 return Colors

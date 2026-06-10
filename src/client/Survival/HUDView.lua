@@ -15,6 +15,10 @@ local fallbackColors = {
 	SuccessGreen = Color3.fromRGB(80, 200, 120),
 }
 fallbackColors.StaminaGreen = fallbackColors.SuccessGreen
+fallbackColors.PanelBackgroundColor = fallbackColors.CardDark
+fallbackColors.PanelBackgroundTransparency = 0.15
+fallbackColors.PanelBorderColor = fallbackColors.BorderLight
+fallbackColors.PanelBorderTransparency = 0.75
 
 local function loadColors()
 	local shared = ReplicatedStorage:FindFirstChild("Shared")
@@ -37,8 +41,8 @@ local Colors = loadColors()
 local HUDView = {}
 
 local function styleCard(frame: Frame, config)
-	frame.BackgroundColor3 = Colors.CardDark
-	frame.BackgroundTransparency = 0.15
+	frame.BackgroundColor3 = Colors.PanelBackgroundColor
+	frame.BackgroundTransparency = Colors.PanelBackgroundTransparency
 	frame.BorderSizePixel = 0
 
 	local corner = Instance.new("UICorner")
@@ -47,8 +51,8 @@ local function styleCard(frame: Frame, config)
 
 	local stroke = Instance.new("UIStroke")
 	stroke.Thickness = 1
-	stroke.Transparency = 0.75
-	stroke.Color = Colors.BorderLight
+	stroke.Transparency = Colors.PanelBorderTransparency
+	stroke.Color = Colors.PanelBorderColor
 	stroke.Parent = frame
 
 	local pad = Instance.new("UIPadding")

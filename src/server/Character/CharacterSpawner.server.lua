@@ -2,6 +2,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
+Players.CharacterAutoLoads = false
+
 local JUMP_POWER = 0
 local SPAWN_HEIGHT_OFFSET = Vector3.new(0, 4, 0)
 local SELECTED_CHARACTER_ATTRIBUTE = "SelectedCharacterType"
@@ -25,6 +27,7 @@ local ANIMAL_CHARACTERS: {[string]: boolean} = {
 
 local spawningPlayers: {[Player]: boolean} = {}
 local selectedCharacters: {[Player]: string} = {}
+local respawnTokens: {[Player]: number} = {}
 local random = Random.new()
 
 local function log(message: string)
@@ -358,6 +361,56 @@ local function spawnAsAnimal(player: Player, animalName: string, oldCharacter: M
 	return true
 end
 
+local function respawnSelectedCharacter(player: Player, oldCharacter: Model?)
+	if spawningPlayers[player] then
+		return false
+	end
+
+	local selectedCharacter = getSelectedCharacter(player)
+	if not selectedCharacter then
+		return false
+	end
+
+	spawningPlayers[player] = true
+	local spawned = false
+
+	if selectedCharacter == "Human" then
+		spawnAsHuman(player)
+		spawned = true
+	elseif ANIMAL_CHARACTERS[selectedCharacter] then
+		spawned = spawnAsAnimal(player, selectedCharacter, oldCharacter)
+	end
+
+	spawningPlayers[player] = nil
+	return spawned
+end
+
+local function scheduleRespawn(player: Player, character: Model)
+	local selectedCharacter = getSelectedCharacter(player)
+	if not selectedCharacter then
+		return
+	end
+
+	local nextToken = (respawnTokens[player] or 0) + 1
+	respawnTokens[player] = nextToken
+
+	task.delay(Players.RespawnTime, function()
+		if respawnTokens[player] ~= nextToken then
+			return
+		end
+
+		if not player.Parent then
+			return
+		end
+
+		if player.Character ~= character then
+			return
+		end
+
+		respawnSelectedCharacter(player, character)
+	end)
+end
+
 local function handleCharacterSelection(player: Player, requestedCharacter: any)
 	if typeof(requestedCharacter) ~= "string" or not ALLOWED_CHARACTERS[requestedCharacter] then
 		warnSpawn(("%s requested invalid character selection: %s"):format(player.Name, tostring(requestedCharacter)))
@@ -402,7 +455,19 @@ local function handleCharacterSelection(player: Player, requestedCharacter: any)
 end
 
 local function initPlayer(player: Player)
+	if not getSelectedCharacter(player) and player.Character then
+		player.Character:Destroy()
+		player.Character = nil
+	end
+
 	player.CharacterAdded:Connect(function(character)
+		local humanoid = character:WaitForChild("Humanoid", 5)
+		if humanoid and humanoid:IsA("Humanoid") then
+			humanoid.Died:Once(function()
+				scheduleRespawn(player, character)
+			end)
+		end
+
 		task.defer(function()
 			if player.Character ~= character then
 				return
@@ -452,4 +517,5 @@ selectCharacterEvent.OnServerEvent:Connect(handleCharacterSelection)
 Players.PlayerRemoving:Connect(function(player)
 	spawningPlayers[player] = nil
 	selectedCharacters[player] = nil
+	respawnTokens[player] = nil
 end)

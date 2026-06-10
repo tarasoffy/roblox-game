@@ -107,8 +107,8 @@ function BowWeapon.Simulate(player: Player, origin: Vector3, aimPos: Vector3, cf
 				})
 
 				local hitModel = result.Instance and result.Instance:FindFirstAncestorOfClass("Model")
-				if hitModel and AnimalsService.IsAnimalModel(hitModel) then
-					AnimalsService.ApplyDamage(hitModel, damage, hitPos)
+				if hitModel and AnimalsService.IsDamageableAnimalModel(hitModel) then
+					AnimalsService.ApplyDamage(hitModel, damage, hitPos, player)
 				end
 
 				return

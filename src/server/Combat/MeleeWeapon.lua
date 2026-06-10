@@ -64,7 +64,7 @@ local function applyHit(player: Player, tool: Tool, cfg, dependencies)
 	end
 
 	if bestAnimal then
-		AnimalsService.ApplyDamage(bestAnimal, cfg.damage, hrp.Position)
+		AnimalsService.ApplyDamage(bestAnimal, cfg.damage, hrp.Position, player)
 	end
 end
 
