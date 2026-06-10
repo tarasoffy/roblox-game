@@ -12,6 +12,7 @@ local ShotgunWeapon = require(script.Parent:WaitForChild("ShotgunWeapon"))
 local BowWeapon = require(script.Parent:WaitForChild("BowWeapon"))
 local CombatRemotes = require(script.Parent:WaitForChild("CombatRemotes"))
 local RangedWeapon = require(script.Parent:WaitForChild("RangedWeapon"))
+local AnimalAttack = require(script.Parent:WaitForChild("AnimalAttack"))
 
 
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -22,6 +23,11 @@ local AnimalsService = require(
 		:WaitForChild("Animals")
 		:WaitForChild("AnimalsService")
 )
+local AnimalConfig = require(
+	ReplicatedStorage
+		:WaitForChild("Shared")
+		:WaitForChild("AnimalConfig")
+)
 
 -------------------------------------------------
 -- REMOTES
@@ -29,6 +35,7 @@ local AnimalsService = require(
 local combatRemotes = CombatRemotes.Get()
 local weaponAction = combatRemotes.WeaponAction
 local bulletFX = combatRemotes.BulletFX
+local animalAttack = combatRemotes.AnimalAttack
 
 -------------------------------------------------
 -- STATE
@@ -108,8 +115,13 @@ weaponAction.OnServerEvent:Connect(function(player: Player, action: string, data
 	end
 end)
 
+animalAttack.OnServerEvent:Connect(function(player: Player)
+	AnimalAttack.Handle(player, AnimalConfig)
+end)
+
 Players.PlayerRemoving:Connect(function(player)
 	CombatCooldowns.ClearPlayer(player)
 	MeleeWeapon.ClearPlayer(player)
+	AnimalAttack.ClearPlayer(player)
 	bowChargeStartedAt[player] = nil
 end)

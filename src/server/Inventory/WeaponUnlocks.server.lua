@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 
 local REMOTES_FOLDER_NAME = "Remotes"
 local REQUEST_REMOTE_NAME = "RequestWeaponUnlock"
@@ -10,6 +11,9 @@ local OBJECTIVE_ZONES_NAME = "ObjectiveZones"
 local WEAPON_UNLOCK_ZONE_NAME = "WeaponUnlockZone"
 local UNLOCKABLE_TOOLS_NAME = "UnlockableTools"
 local UNLOCK_DISTANCE_FALLBACK = 10
+local HumanToolService = require(
+	ServerScriptService:WaitForChild("Character"):WaitForChild("HumanToolService")
+)
 
 local UNLOCK_ORDER = {
 	"Bow",
@@ -165,6 +169,10 @@ local function playerHasTool(player: Player, toolName: string): boolean
 end
 
 local function giveTool(player: Player, toolName: string): boolean
+	if not HumanToolService.IsHumanCharacter(player) then
+		return false
+	end
+
 	if playerHasTool(player, toolName) then
 		return true
 	end
@@ -205,6 +213,11 @@ local function getNextLockedWeapon(player: Player): string?
 end
 
 local function regrantUnlockedTools(player: Player)
+	if not HumanToolService.IsHumanCharacter(player) then
+		HumanToolService.ClearHumanTools(player)
+		return
+	end
+
 	local playerUnlocks = getPlayerUnlocks(player)
 
 	for _, weaponName in ipairs(UNLOCK_ORDER) do
@@ -215,6 +228,12 @@ local function regrantUnlockedTools(player: Player)
 end
 
 local function handleUnlockRequest(player: Player)
+	if not HumanToolService.IsHumanCharacter(player) then
+		HumanToolService.ClearHumanTools(player)
+		requestWeaponUnlock:FireClient(player, "Rejected", nil, "Weapons are only available to humans.")
+		return
+	end
+
 	if not isPlayerInUnlockZone(player) then
 		requestWeaponUnlock:FireClient(player, "Rejected", nil, "Move closer to the unlock zone.")
 		return

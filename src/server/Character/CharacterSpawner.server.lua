@@ -2,9 +2,10 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
-local WALK_SPEED = 18
 local JUMP_POWER = 0
 local SPAWN_HEIGHT_OFFSET = Vector3.new(0, 4, 0)
+local AnimalConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("AnimalConfig"))
+local HumanToolService = require(script.Parent:WaitForChild("HumanToolService"))
 
 local ALLOWED_CHARACTERS: {[string]: boolean} = {
 	Human = true,
@@ -242,8 +243,19 @@ local function configureParts(rootPart: BasePart, collisionBox: BasePart, visual
 	visual.Massless = true
 end
 
-local function configureHumanoid(humanoid: Humanoid)
-	humanoid.WalkSpeed = WALK_SPEED
+local function configureHumanoid(humanoid: Humanoid, stats)
+	local maxHealth = stats and stats.MaxHealth
+	local walkSpeed = stats and stats.WalkSpeed
+
+	if typeof(maxHealth) == "number" then
+		humanoid.MaxHealth = maxHealth
+		humanoid.Health = maxHealth
+	end
+
+	if typeof(walkSpeed) == "number" then
+		humanoid.WalkSpeed = walkSpeed
+	end
+
 	humanoid.JumpPower = JUMP_POWER
 	humanoid.AutoRotate = true
 	humanoid.PlatformStand = false
@@ -265,13 +277,26 @@ local function spawnAsHuman(player: Player)
 	player:LoadCharacter()
 	local character = player.Character
 	if character then
+		character:SetAttribute("IsAnimalCharacter", nil)
+		character:SetAttribute("AnimalType", nil)
+
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		local humanStats = AnimalConfig.Human
+		if humanoid and humanStats and typeof(humanStats.MaxHealth) == "number" then
+			humanoid.MaxHealth = humanStats.MaxHealth
+			humanoid.Health = humanStats.MaxHealth
+		end
+
 		character:PivotTo(getHumanSpawnCFrame())
 	end
 
+	HumanToolService.GiveHumanStarterTools(player)
 	log(("Spawn complete for %s as Human."):format(player.Name))
 end
 
 local function spawnAsAnimal(player: Player, animalName: string, oldCharacter: Model?)
+	HumanToolService.ClearHumanTools(player)
+
 	local animalTemplate = getAnimalTemplate(animalName)
 	if not animalTemplate then
 		return false
@@ -280,6 +305,7 @@ local function spawnAsAnimal(player: Player, animalName: string, oldCharacter: M
 	local animalCharacter = animalTemplate:Clone()
 	animalCharacter.Name = player.Name
 	animalCharacter:SetAttribute("IsAnimalCharacter", true)
+	animalCharacter:SetAttribute("AnimalType", animalName)
 
 	local humanoid, rootPart, collisionBox, visual = validateAnimalCharacter(animalCharacter, animalName)
 	if not humanoid or not rootPart or not collisionBox or not visual then
@@ -288,11 +314,12 @@ local function spawnAsAnimal(player: Player, animalName: string, oldCharacter: M
 	end
 
 	configureParts(rootPart, collisionBox, visual)
-	configureHumanoid(humanoid)
+	configureHumanoid(humanoid, AnimalConfig[animalName])
 
 	animalCharacter.Parent = workspace
 	animalCharacter:PivotTo(getAnimalSpawnCFrame())
 	player.Character = animalCharacter
+	HumanToolService.ClearHumanTools(player)
 
 	setNetworkOwner(player, rootPart)
 	setNetworkOwner(player, collisionBox)
@@ -319,6 +346,11 @@ local function handleCharacterSelection(player: Player, requestedCharacter: any)
 
 	if selectedCharacters[player] == requestedCharacter then
 		log(("%s already selected %s; duplicate request ignored."):format(player.Name, requestedCharacter))
+		if requestedCharacter == "Human" then
+			HumanToolService.GiveHumanStarterTools(player)
+		elseif ANIMAL_CHARACTERS[requestedCharacter] then
+			HumanToolService.ClearHumanTools(player)
+		end
 		selectCharacterEvent:FireClient(player, true, requestedCharacter)
 		return
 	end
@@ -343,6 +375,27 @@ local function handleCharacterSelection(player: Player, requestedCharacter: any)
 	selectCharacterEvent:FireClient(player, selectionAccepted, requestedCharacter)
 end
 
+local function initPlayer(player: Player)
+	player.CharacterAdded:Connect(function(character)
+		task.defer(function()
+			if player.Character ~= character then
+				return
+			end
+
+			if character:GetAttribute("IsAnimalCharacter") == true then
+				HumanToolService.ClearHumanTools(player)
+			elseif selectedCharacters[player] == "Human" then
+				HumanToolService.GiveHumanStarterTools(player)
+			end
+		end)
+	end)
+end
+
+for _, player in ipairs(Players:GetPlayers()) do
+	initPlayer(player)
+end
+
+Players.PlayerAdded:Connect(initPlayer)
 selectCharacterEvent.OnServerEvent:Connect(handleCharacterSelection)
 
 Players.PlayerRemoving:Connect(function(player)
