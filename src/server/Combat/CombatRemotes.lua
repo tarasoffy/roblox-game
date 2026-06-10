@@ -44,6 +44,7 @@ function CombatRemotes.Get()
 	return {
 		WeaponAction = ensureRemoteEvent(remotesFolder, "WeaponAction"),
 		BulletFX = ensureRemoteEvent(remotesFolder, "BulletFX"),
+		AnimalAttack = ensureRemoteEvent(remotesFolder, "AnimalAttack"),
 	}
 end
 

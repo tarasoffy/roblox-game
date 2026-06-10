@@ -3,6 +3,10 @@
 
 local StaminaController = {}
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local AnimalConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("AnimalConfig"))
+local setAnimalSprint = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("SetAnimalSprint")
+
 local player: Player? = nil
 local config = nil
 local getHumanoid = nil
@@ -31,6 +35,27 @@ local function isSlowed(): boolean
 	return player:GetAttribute("Starving") == true or player:GetAttribute("Poisoned") == true
 end
 
+local function isAnimalCharacter(): boolean
+	local humanoid = getHumanoid and getHumanoid()
+	local character = humanoid and humanoid.Parent
+
+	return character ~= nil
+		and character:IsA("Model")
+		and character:GetAttribute("IsAnimalCharacter") == true
+end
+
+local function getAnimalStats()
+	local humanoid = getHumanoid and getHumanoid()
+	local character = humanoid and humanoid.Parent
+
+	if not character or not character:IsA("Model") or character:GetAttribute("IsAnimalCharacter") ~= true then
+		return nil
+	end
+
+	local animalType = character:GetAttribute("AnimalType")
+	return typeof(animalType) == "string" and AnimalConfig[animalType] or nil
+end
+
 local function setSpeed(speed: number)
 	if isSlowed() then
 		speed = config.SLOW_SPEED
@@ -41,6 +66,22 @@ local function setSpeed(speed: number)
 	if humanoid and humanoid.Parent then
 		humanoid.WalkSpeed = speed
 	end
+end
+
+local function getWalkSpeed(): number
+	if isAnimalCharacter() then
+		local stats = getAnimalStats()
+
+		if stats and typeof(stats.WalkSpeed) == "number" then
+			return stats.WalkSpeed
+		end
+	end
+
+	return config.WALK_SPEED
+end
+
+local function getRunSpeed(): number
+	return config.RUN_SPEED
 end
 
 local function canRunNow(): boolean
@@ -61,30 +102,41 @@ function StaminaController.Init(nextPlayer: Player, nextConfig, nextGetHumanoid,
 end
 
 function StaminaController.Reset()
+	if isAnimalCharacter() then
+		setAnimalSprint:FireServer(false)
+	end
+
 	stamina = config.STAMINA_MAX
 	wantRun = false
 	isRunning = false
 	lastDrainTime = 0
 	exhausted = false
 
-	setSpeed(config.WALK_SPEED)
+	setSpeed(getWalkSpeed())
 	notifyChanged()
 end
 
 function StaminaController.ApplyRunState()
+	if isAnimalCharacter() then
+		isRunning = wantRun
+		setAnimalSprint:FireServer(wantRun)
+		notifyChanged()
+		return
+	end
+
 	if isSlowed() then
 		isRunning = false
-		setSpeed(config.WALK_SPEED)
+		setSpeed(getWalkSpeed())
 		notifyChanged()
 		return
 	end
 
 	if wantRun and canRunNow() then
 		isRunning = true
-		setSpeed(config.RUN_SPEED)
+		setSpeed(getRunSpeed())
 	else
 		isRunning = false
-		setSpeed(config.WALK_SPEED)
+		setSpeed(getWalkSpeed())
 	end
 
 	notifyChanged()
@@ -104,6 +156,11 @@ function StaminaController.Update(deltaTime: number)
 	local humanoid = getHumanoid and getHumanoid()
 
 	if not humanoid or not humanoid.Parent then
+		notifyChanged()
+		return
+	end
+
+	if isAnimalCharacter() then
 		notifyChanged()
 		return
 	end
