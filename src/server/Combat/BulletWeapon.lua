@@ -66,8 +66,8 @@ function BulletWeapon.Simulate(player: Player, origin: Vector3, dirUnit: Vector3
 				bulletFX:FireAllClients("Stop", { id = bulletId, finalPos = hitPos })
 
 				local hitModel = result.Instance and result.Instance:FindFirstAncestorOfClass("Model")
-				if hitModel and AnimalsService.IsAnimalModel(hitModel) then
-					AnimalsService.ApplyDamage(hitModel, damage, hitPos)
+				if hitModel and AnimalsService.IsDamageableAnimalModel(hitModel) then
+					AnimalsService.ApplyDamage(hitModel, damage, hitPos, player)
 				end
 
 				return

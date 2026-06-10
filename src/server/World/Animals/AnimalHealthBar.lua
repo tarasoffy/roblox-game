@@ -41,6 +41,12 @@ local function getSmoothHealthColor(percent: number): Color3
 end
 
 local function getHealthBarRoot(animal: Model): BasePart?
+	local head = animal:FindFirstChild("Head")
+
+	if head and head:IsA("BasePart") then
+		return head
+	end
+
 	local root = animal.PrimaryPart
 
 	if root and root:IsA("BasePart") then
@@ -121,6 +127,9 @@ function AnimalHealthBar.Attach(animal: Model, config)
 
 	humanoid.HealthChanged:Connect(update)
 	humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(update)
+	humanoid.Died:Once(function()
+		AnimalHealthBar.Remove(animal, config)
+	end)
 end
 
 function AnimalHealthBar.Remove(animal: Model, config)

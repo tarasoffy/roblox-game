@@ -116,7 +116,9 @@ weaponAction.OnServerEvent:Connect(function(player: Player, action: string, data
 end)
 
 animalAttack.OnServerEvent:Connect(function(player: Player)
-	AnimalAttack.Handle(player, AnimalConfig)
+	AnimalAttack.Handle(player, AnimalConfig, {
+		ShowTargetHealthBar = combatRemotes.ShowTargetHealthBar,
+	})
 end)
 
 Players.PlayerRemoving:Connect(function(player)

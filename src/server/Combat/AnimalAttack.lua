@@ -103,7 +103,18 @@ local function findNearestTarget(attackerCharacter: Model, attackerRoot: BasePar
 	return bestTarget, bestHumanoid
 end
 
-function AnimalAttack.Handle(player: Player, animalConfig)
+local function showTargetHealthBar(player: Player, target: Model, targetHumanoid: Humanoid, dependencies)
+	if target == player.Character then
+		return
+	end
+
+	local remote = dependencies and dependencies.ShowTargetHealthBar
+	if remote and remote:IsA("RemoteEvent") then
+		remote:FireClient(player, target, targetHumanoid.Health, targetHumanoid.MaxHealth)
+	end
+end
+
+function AnimalAttack.Handle(player: Player, animalConfig, dependencies)
 	local character = player.Character
 	if not character then
 		log("Rejected: missing character", player.Name)
@@ -158,6 +169,7 @@ function AnimalAttack.Handle(player: Player, animalConfig)
 	end
 
 	targetHumanoid:TakeDamage(damage)
+	showTargetHealthBar(player, target, targetHumanoid, dependencies)
 	log("Hit", player.Name, animalType, "target=", target.Name, "damage=", damage)
 end
 

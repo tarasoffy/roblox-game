@@ -90,8 +90,8 @@ function ShotgunWeapon.Shoot(player: Player, origin: Vector3, aimPos: Vector3, c
 			if part:IsA("BasePart") and not part:IsDescendantOf(char) then
 				local model = part:FindFirstAncestorOfClass("Model")
 
-				if model and AnimalsService.IsAnimalModel(model) then
-					AnimalsService.ApplyDamage(model, cfg.damage, origin)
+				if model and AnimalsService.IsDamageableAnimalModel(model) then
+					AnimalsService.ApplyDamage(model, cfg.damage, origin, player)
 					damaged = true
 					break
 				end
@@ -121,8 +121,8 @@ function ShotgunWeapon.Shoot(player: Player, origin: Vector3, aimPos: Vector3, c
 			hitPos = result.Position
 
 			local hitModel = result.Instance and result.Instance:FindFirstAncestorOfClass("Model")
-			if hitModel and AnimalsService.IsAnimalModel(hitModel) then
-				AnimalsService.ApplyDamage(hitModel, cfg.damage, hitPos)
+			if hitModel and AnimalsService.IsDamageableAnimalModel(hitModel) then
+				AnimalsService.ApplyDamage(hitModel, cfg.damage, hitPos, player)
 			end
 		end
 

@@ -45,6 +45,7 @@ function CombatRemotes.Get()
 		WeaponAction = ensureRemoteEvent(remotesFolder, "WeaponAction"),
 		BulletFX = ensureRemoteEvent(remotesFolder, "BulletFX"),
 		AnimalAttack = ensureRemoteEvent(remotesFolder, "AnimalAttack"),
+		ShowTargetHealthBar = ensureRemoteEvent(remotesFolder, "ShowTargetHealthBar"),
 	}
 end
 

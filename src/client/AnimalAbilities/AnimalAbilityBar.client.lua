@@ -13,6 +13,10 @@ local fallbackColors = {
 	TextSecondary = Color3.fromRGB(230, 230, 230),
 	BorderLight = Color3.fromRGB(255, 255, 255),
 }
+fallbackColors.PanelBackgroundColor = fallbackColors.CardDark
+fallbackColors.PanelBackgroundTransparency = 0.15
+fallbackColors.PanelBorderColor = fallbackColors.BorderLight
+fallbackColors.PanelBorderTransparency = 0.75
 
 local function loadColors()
 	local shared = ReplicatedStorage:FindFirstChild("Shared")
@@ -93,8 +97,8 @@ local function createSlot(slot: number, abilityName: string)
 	button.Name = "Slot" .. tostring(slot)
 	button.LayoutOrder = slot
 	button.Size = UDim2.fromOffset(76, 68)
-	button.BackgroundColor3 = Colors.CardDark
-	button.BackgroundTransparency = 0.15
+	button.BackgroundColor3 = Colors.PanelBackgroundColor
+	button.BackgroundTransparency = Colors.PanelBackgroundTransparency
 	button.BorderSizePixel = 0
 	button.Parent = container
 
@@ -103,9 +107,9 @@ local function createSlot(slot: number, abilityName: string)
 	corner.Parent = button
 
 	local stroke = Instance.new("UIStroke")
-	stroke.Color = Colors.BorderLight
+	stroke.Color = Colors.PanelBorderColor
 	stroke.Thickness = 1
-	stroke.Transparency = 0.55
+	stroke.Transparency = Colors.PanelBorderTransparency
 	stroke.Parent = button
 
 	local key = Instance.new("TextLabel")
@@ -212,11 +216,11 @@ RunService.RenderStepped:Connect(function()
 
 		if remaining > 0 then
 			view.cooldown.Text = tostring(math.ceil(remaining))
-			view.button.BackgroundTransparency = 0.32
+			view.button.BackgroundTransparency = Colors.PanelBackgroundTransparency
 		else
 			cooldownEndsBySlot[slot] = nil
 			view.cooldown.Text = ""
-			view.button.BackgroundTransparency = 0.15
+			view.button.BackgroundTransparency = Colors.PanelBackgroundTransparency
 		end
 	end
 end)

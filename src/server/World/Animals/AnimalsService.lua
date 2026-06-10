@@ -10,6 +10,22 @@ local AnimalPool = require(script.Parent:WaitForChild("AnimalPool"))
 
 local AnimalsService = {}
 
+local function showTargetHealthBar(attacker: Player?, target: Model, humanoid: Humanoid)
+	if not attacker then
+		return
+	end
+
+	if attacker.Character == target then
+		return
+	end
+
+	local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes")
+	local showTargetHealthBarRemote = remotes and remotes:FindFirstChild("ShowTargetHealthBar")
+	if showTargetHealthBarRemote and showTargetHealthBarRemote:IsA("RemoteEvent") then
+		showTargetHealthBarRemote:FireClient(attacker, target, humanoid.Health, humanoid.MaxHealth)
+	end
+end
+
 local function getAnimalRootPosition(animal: Model, fallbackPosition: Vector3?): Vector3
 	local root = animal.PrimaryPart
 		or animal:FindFirstChild("HumanoidRootPart")
@@ -46,7 +62,7 @@ function AnimalsService.IsDamageableAnimalModel(model: Instance): boolean
 	return AnimalsService.IsAnimalModel(model)
 end
 
-function AnimalsService.ApplyDamage(animal: Model, damage: number, hitPosition: Vector3?)
+function AnimalsService.ApplyDamage(animal: Model, damage: number, hitPosition: Vector3?, attacker: Player?)
 	local humanoid = animal:FindFirstChildOfClass("Humanoid")
 
 	if not humanoid then
@@ -61,16 +77,19 @@ function AnimalsService.ApplyDamage(animal: Model, damage: number, hitPosition: 
 		return
 	end
 
-	if Players:GetPlayerFromCharacter(animal) then
-		humanoid:TakeDamage(damage)
-		return
-	end
-
-	if not animal:FindFirstChild(AnimalsConfig.HealthBarName) then
+	local targetPlayer = Players:GetPlayerFromCharacter(animal)
+	if not attacker and not targetPlayer and not animal:FindFirstChild(AnimalsConfig.HealthBarName) then
 		AnimalHealthBar.Attach(animal, AnimalsConfig)
 	end
 
+	if targetPlayer then
+		humanoid:TakeDamage(damage)
+		showTargetHealthBar(attacker, animal, humanoid)
+		return
+	end
+
 	humanoid:TakeDamage(damage)
+	showTargetHealthBar(attacker, animal, humanoid)
 
 	if humanoid.Health > 0 then
 		return
