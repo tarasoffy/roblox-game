@@ -35,20 +35,52 @@ local function isSlowed(): boolean
 	return player:GetAttribute("Starving") == true or player:GetAttribute("Poisoned") == true
 end
 
-local function isAnimalCharacter(): boolean
+local function getCharacter(): Model?
 	local humanoid = getHumanoid and getHumanoid()
 	local character = humanoid and humanoid.Parent
 
-	return character ~= nil
-		and character:IsA("Model")
-		and character:GetAttribute("IsAnimalCharacter") == true
+	if character and character:IsA("Model") then
+		return character
+	end
+
+	return nil
+end
+
+local function isAnimalCharacter(): boolean
+	local character = getCharacter()
+	return character ~= nil and character:GetAttribute("IsAnimalCharacter") == true
+end
+
+local function getFearMoveSpeedMultiplier(): number
+	if isAnimalCharacter() then
+		return 1
+	end
+
+	local character = getCharacter()
+	local feared = (player ~= nil and player:GetAttribute("Feared") == true)
+		or (character ~= nil and character:GetAttribute("Feared") == true)
+
+	if not feared then
+		return 1
+	end
+
+	local multiplier = character and character:GetAttribute("FearMoveSpeedMultiplier")
+
+	if typeof(multiplier) ~= "number" and player then
+		multiplier = player:GetAttribute("FearMoveSpeedMultiplier")
+	end
+
+	if typeof(multiplier) ~= "number" then
+		multiplier = 0.7
+	end
+
+	return math.clamp(multiplier, 0.1, 1)
 end
 
 local function getAnimalStats()
-	local humanoid = getHumanoid and getHumanoid()
-	local character = humanoid and humanoid.Parent
+	local character = getCharacter()
 
-	if not character or not character:IsA("Model") or character:GetAttribute("IsAnimalCharacter") ~= true then
+	if not character or character:GetAttribute("IsAnimalCharacter") ~= true then
 		return nil
 	end
 
@@ -77,11 +109,11 @@ local function getWalkSpeed(): number
 		end
 	end
 
-	return config.WALK_SPEED
+	return config.WALK_SPEED * getFearMoveSpeedMultiplier()
 end
 
 local function getRunSpeed(): number
-	return config.RUN_SPEED
+	return config.RUN_SPEED * getFearMoveSpeedMultiplier()
 end
 
 local function canRunNow(): boolean

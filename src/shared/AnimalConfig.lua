@@ -19,6 +19,16 @@ local AnimalConfig = {
 		Damage = 20,
 		AttackRange = 10,
 		AttackCooldown = 1.0,
+		Abilities = {
+			Howl = {
+				Slot = 1,
+				Cooldown = 60,
+				Radius = 150,
+				Duration = 6,
+				MoveSpeedMultiplier = 0.4,
+				ChopCooldownMultiplier = 2,
+			},
+		},
 	},
 
 	Bear = {

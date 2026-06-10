@@ -14,6 +14,7 @@ local player = Players.LocalPlayer
 
 local humanoid: Humanoid? = nil
 local lastHp: number? = nil
+local characterFearConnections: {RBXScriptConnection} = {}
 
 local UI = HUDView.Create(player, HUDConfig)
 
@@ -84,10 +85,35 @@ player:GetAttributeChangedSignal("Poisoned"):Connect(function()
 	StaminaController.ApplyRunState()
 end)
 
+player:GetAttributeChangedSignal("Feared"):Connect(function()
+	StaminaController.ApplyRunState()
+end)
+
+player:GetAttributeChangedSignal("FearMoveSpeedMultiplier"):Connect(function()
+	StaminaController.ApplyRunState()
+end)
+
+local function clearCharacterFearConnections()
+	for _, connection in ipairs(characterFearConnections) do
+		connection:Disconnect()
+	end
+
+	table.clear(characterFearConnections)
+end
+
 local function onCharacter(character: Model)
+	clearCharacterFearConnections()
 	humanoid = character:WaitForChild("Humanoid")
 
 	StaminaController.Reset()
+
+	table.insert(characterFearConnections, character:GetAttributeChangedSignal("Feared"):Connect(function()
+		StaminaController.ApplyRunState()
+	end))
+
+	table.insert(characterFearConnections, character:GetAttributeChangedSignal("FearMoveSpeedMultiplier"):Connect(function()
+		StaminaController.ApplyRunState()
+	end))
 
 	lastHp = humanoid.Health
 	HUDDamageVignette.Reset()
