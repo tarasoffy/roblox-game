@@ -4,6 +4,7 @@ local ServerStorage = game:GetService("ServerStorage")
 
 local JUMP_POWER = 0
 local SPAWN_HEIGHT_OFFSET = Vector3.new(0, 4, 0)
+local SELECTED_CHARACTER_ATTRIBUTE = "SelectedCharacterType"
 local AnimalConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("AnimalConfig"))
 local HumanToolService = require(script.Parent:WaitForChild("HumanToolService"))
 
@@ -32,6 +33,26 @@ end
 
 local function warnSpawn(message: string)
 	warn("[CharacterSpawn] " .. message)
+end
+
+local function setSelectedCharacter(player: Player, characterName: string)
+	selectedCharacters[player] = characterName
+	player:SetAttribute(SELECTED_CHARACTER_ATTRIBUTE, characterName)
+end
+
+local function getSelectedCharacter(player: Player): string?
+	local selectedCharacter = selectedCharacters[player]
+	if selectedCharacter then
+		return selectedCharacter
+	end
+
+	local attributeValue = player:GetAttribute(SELECTED_CHARACTER_ATTRIBUTE)
+	if typeof(attributeValue) == "string" and ALLOWED_CHARACTERS[attributeValue] then
+		selectedCharacters[player] = attributeValue
+		return attributeValue
+	end
+
+	return nil
 end
 
 local function ensureFolder(parent: Instance, folderName: string): Folder
@@ -273,21 +294,26 @@ local function setNetworkOwner(player: Player, part: BasePart)
 	end
 end
 
+local function configureHumanCharacter(character: Model)
+	character:SetAttribute("IsAnimalCharacter", nil)
+	character:SetAttribute("AnimalType", nil)
+
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local humanStats = AnimalConfig.Human
+	if humanoid and humanStats and typeof(humanStats.MaxHealth) == "number" then
+		humanoid.MaxHealth = humanStats.MaxHealth
+		humanoid.Health = humanStats.MaxHealth
+	end
+
+	character:PivotTo(getHumanSpawnCFrame())
+end
+
 local function spawnAsHuman(player: Player)
+	HumanToolService.ClearHumanTools(player)
 	player:LoadCharacter()
 	local character = player.Character
 	if character then
-		character:SetAttribute("IsAnimalCharacter", nil)
-		character:SetAttribute("AnimalType", nil)
-
-		local humanoid = character:FindFirstChildOfClass("Humanoid")
-		local humanStats = AnimalConfig.Human
-		if humanoid and humanStats and typeof(humanStats.MaxHealth) == "number" then
-			humanoid.MaxHealth = humanStats.MaxHealth
-			humanoid.Health = humanStats.MaxHealth
-		end
-
-		character:PivotTo(getHumanSpawnCFrame())
+		configureHumanCharacter(character)
 	end
 
 	HumanToolService.GiveHumanStarterTools(player)
@@ -344,7 +370,7 @@ local function handleCharacterSelection(player: Player, requestedCharacter: any)
 		return
 	end
 
-	if selectedCharacters[player] == requestedCharacter then
+	if getSelectedCharacter(player) == requestedCharacter then
 		log(("%s already selected %s; duplicate request ignored."):format(player.Name, requestedCharacter))
 		if requestedCharacter == "Human" then
 			HumanToolService.GiveHumanStarterTools(player)
@@ -359,14 +385,14 @@ local function handleCharacterSelection(player: Player, requestedCharacter: any)
 	local selectionAccepted = false
 
 	if requestedCharacter == "Human" then
-		selectedCharacters[player] = requestedCharacter
+		setSelectedCharacter(player, requestedCharacter)
 		spawnAsHuman(player)
 		selectionAccepted = true
 	elseif ANIMAL_CHARACTERS[requestedCharacter] then
 		local oldCharacter = player.Character
 		local spawned = spawnAsAnimal(player, requestedCharacter, oldCharacter)
 		if spawned then
-			selectedCharacters[player] = requestedCharacter
+			setSelectedCharacter(player, requestedCharacter)
 			selectionAccepted = true
 		end
 	end
@@ -382,9 +408,34 @@ local function initPlayer(player: Player)
 				return
 			end
 
-			if character:GetAttribute("IsAnimalCharacter") == true then
+			local selectedCharacter = getSelectedCharacter(player)
+			if ANIMAL_CHARACTERS[selectedCharacter or ""] then
+				local animalName = selectedCharacter
+				if not animalName then
+					return
+				end
+
+				if character:GetAttribute("IsAnimalCharacter") == true and character:GetAttribute("AnimalType") == selectedCharacter then
+					HumanToolService.ClearHumanTools(player)
+					return
+				end
+
+				if spawningPlayers[player] then
+					HumanToolService.ClearHumanTools(player)
+					return
+				end
+
+				spawningPlayers[player] = true
+				local spawned = spawnAsAnimal(player, animalName, character)
+				spawningPlayers[player] = nil
+
+				if not spawned then
+					HumanToolService.ClearHumanTools(player)
+				end
+			elseif character:GetAttribute("IsAnimalCharacter") == true then
 				HumanToolService.ClearHumanTools(player)
-			elseif selectedCharacters[player] == "Human" then
+			elseif selectedCharacter == "Human" then
+				configureHumanCharacter(character)
 				HumanToolService.GiveHumanStarterTools(player)
 			end
 		end)
